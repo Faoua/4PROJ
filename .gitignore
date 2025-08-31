@@ -1,0 +1,29 @@
+# Node
+node_modules
+npm-debug.log
+yarn-error.log
+
+# Build
+dist
+coverage
+
+# Prisma
+prisma/dev.db
+prisma/*.sqlite
+*.db-journal
+
+# Docker
+*.pid
+*.sock
+docker-data/
+
+# Env
+.env
+.env.*
+!.env.example
+
+# IDE / OS
+.vscode
+.idea
+.DS_Store
+Thumbs.db
