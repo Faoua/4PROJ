@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
-
+import collectionsRouter from "./modules/collections/collections.routes";0
 import authRouter from "./modules/users/auth.routes"; 
 
 const app = express();
@@ -18,6 +18,6 @@ app.use((err: any, _req: any, res: any, _next: any) => {
   console.error('UNCAUGHT_ERROR:', err);
   res.status(500).json({ error: 'Internal Server Error' });
 });
-
+app.use("/collections", collectionsRouter);
 
 export default app;
