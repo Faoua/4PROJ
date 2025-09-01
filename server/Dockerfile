@@ -1,20 +1,20 @@
 FROM node:20
+
 WORKDIR /app
 
-# 1) Déps
-COPY package*.json ./
-RUN npm ci
+# copie séparée pour maximiser le cache
+COPY package.json package-lock.json* ./
 
-# 2) Sources  
-COPY tsconfig.json ./
+# si le lockfile existe -> npm ci, sinon -> npm install
+RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
+
 COPY prisma ./prisma
-COPY src ./src
-
-# 3) Générer le client Prisma AVANT de compiler TS
 RUN npx prisma generate
 
-# 4) Build TS
+COPY src ./src
+COPY tsconfig.json ./
+
 RUN npm run build
 
 EXPOSE 8080
-CMD ["node","dist/index.js"]
+CMD ["node", "dist/index.js"]

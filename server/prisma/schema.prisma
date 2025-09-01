@@ -7,6 +7,9 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+/**
+ * =================== UTILISATEURS ===================
+ */
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
@@ -14,10 +17,12 @@ model User {
   displayName  String?
   createdAt    DateTime @default(now())
 
-  // <- cette ligne doit être DANS le bloc User
   memberships CollectionMember[]
 }
 
+/**
+ * =================== COLLECTIONS ===================
+ */
 enum Role {
   OWNER
   READER
@@ -32,16 +37,63 @@ model Collection {
   createdAt   DateTime @default(now()) @map("created_at")
 
   members CollectionMember[]
+  feeds   Feed[] // <— côté opposé de Feed.collection
 }
 
 model CollectionMember {
-  collection   Collection @relation(fields: [collectionId], references: [id])
-  collectionId String     @map("collection_id")
+  // clés
+  collectionId String @map("collection_id")
+  userId       String @map("user_id")
 
-  user   User   @relation(fields: [userId], references: [id])
-  userId String @map("user_id")
+  // relations (UNE FOIS chacune !)
+  collection Collection @relation(fields: [collectionId], references: [id])
+  user       User       @relation(fields: [userId], references: [id])
 
   role Role
 
   @@id([collectionId, userId])
+}
+
+/**
+ * =================== FEEDS & ARTICLES ===================
+ */
+enum FeedStatus {
+  active
+  inactive
+}
+
+model Feed {
+  id           String     @id @default(cuid())
+  collectionId String     @map("collection_id")
+  collection   Collection @relation(fields: [collectionId], references: [id])
+
+  url           String
+  title         String
+  description   String?
+  updateFreqMin Int        @default(60) @map("update_freq_min")
+  status        FeedStatus @default(active)
+  lastFetchedAt DateTime?  @map("last_fetched_at")
+
+  articles Article[]
+
+  @@unique([collectionId, url])
+  @@index([collectionId])
+}
+
+model Article {
+  id     String @id @default(cuid())
+  feedId String @map("feed_id")
+  feed   Feed   @relation(fields: [feedId], references: [id])
+
+  guid        String
+  title       String
+  link        String
+  author      String?
+  publishedAt DateTime? @map("published_at")
+  summary     String?
+  contentHtml String?   @map("content_html")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@unique([feedId, guid])
+  @@index([feedId])
 }

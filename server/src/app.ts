@@ -4,6 +4,7 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import collectionsRouter from "./modules/collections/collections.routes";0
 import authRouter from "./modules/users/auth.routes"; 
+import feedsRouter from "./modules/feeds/feeds.routes";
 
 const app = express();
 app.use(helmet());
@@ -19,5 +20,12 @@ app.use((err: any, _req: any, res: any, _next: any) => {
   res.status(500).json({ error: 'Internal Server Error' });
 });
 app.use("/collections", collectionsRouter);
+app.use("/", feedsRouter);
+app.use((err: any, _req: any, res: any, _next: any) => {
+  if (err?.status) return res.status(err.status).json({ error: err.message });
+  console.error(err);
+  res.status(500).json({ error: "Internal server error" });
+});
+
 
 export default app;

@@ -14,103 +14,81 @@ const CreateCollectionSchema = z.object({
   isShared: z.boolean().optional(),
 });
 
-/* -------------------- Helpers / Types TS ---------------------- */
+/* -------------------- Helpers ---------------------- */
 function getUserId(req: any): string {
   if (!req.user?.sub) throw new Error("No user in request");
   return req.user.sub as string;
 }
 
-// Type du résultat de findMany (avec include imbriqué)
-type MembershipWithCollection = Prisma.CollectionMemberGetPayload<{
-  include: {
-    collection: {
-      include: {
-        members: { select: { userId: true; role: true } };
-      };
-    };
-  };
-}>;
-
 /* ------------------------- Routes ----------------------------- */
 
-/**
- * POST /collections
- * Crée une collection et ajoute le créateur comme OWNER dans CollectionMember
- */
+/** POST /collections */
 router.post("/", authGuard, async (req, res) => {
   const parse = CreateCollectionSchema.safeParse(req.body);
   if (!parse.success) {
-    return res
-      .status(400)
-      .json({ error: "Invalid body", details: parse.error.flatten() });
+    return res.status(400).json({ error: "Invalid body", details: parse.error.flatten() });
   }
 
   const { name, description, isShared } = parse.data;
   const userId = getUserId(req);
 
-  const created = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-    const collection = await tx.collection.create({
-      data: {
-        name,
-        description: description ?? null,
-        isShared: isShared ?? false,
-        createdBy: userId,
-      },
-    });
-
-    await tx.collectionMember.create({
-      data: {
-        collectionId: collection.id,
-        userId,
-        role: Role.OWNER, // ✅ enum Prisma portable
-      },
-    });
-
-    return collection;
+ const created = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+  const collection = await tx.collection.create({
+    data: {
+      name,
+      description: description ?? null,
+      isShared: isShared ?? false,
+      createdBy: userId,
+    },
   });
+
+ await tx.collectionMember.create({
+  data: {
+    collectionId: collection.id,
+    userId,
+    role: Role.OWNER,   // ✅ c’est l’enum généré automatiquement
+  },
+});
+
+  return collection;
+});
 
   return res.status(201).json({ collection: created });
 });
 
-/**
- * GET /collections
- * Retourne toutes les collections où l’utilisateur est membre,
- * avec son rôle et un mini résumé.
- */
+/** GET /collections */
 router.get("/", authGuard, async (req, res) => {
   const userId = getUserId(req);
 
-  const memberships: MembershipWithCollection[] =
-    await prisma.collectionMember.findMany({
-      where: { userId },
+  const memberships = await prisma.collectionMember.findMany({
+  where: { userId },
+  include: {
+    collection: {
       include: {
-        collection: {
-          include: {
-            members: { select: { userId: true, role: true } },
-          },
-        },
+        members: { select: { userId: true, role: true } },
       },
-      orderBy: { collectionId: "asc" },
-    });
+    },
+  },
+  orderBy: { collectionId: "asc" },
+});
 
-  const data = memberships.map((m) => ({
-    id: m.collectionId,
-    name: m.collection.name,
-    description: m.collection.description,
-    isShared: m.collection.isShared,
-    createdBy: m.collection.createdBy,
-    createdAt: m.collection.createdAt,
-    myRole: m.role,
-    membersCount: m.collection.members.length,
-  }));
+// ✅ type sûr pour 'm'
+const data = memberships.map((m: (typeof memberships)[number]) => ({
+  id: m.collectionId,
+  name: m.collection.name,
+  description: m.collection.description,
+  isShared: m.collection.isShared,
+  createdBy: m.collection.createdBy,
+  createdAt: m.collection.createdAt,
+  myRole: m.role,
+  membersCount: m.collection.members.length,
+}));
+
 
   return res.json({ collections: data });
 });
 
-/**
- * GET /collections/:id
- * Détail d’une collection si l’utilisateur est membre.
- */
+/** GET /collections/:id */
 router.get("/:id", authGuard, async (req, res) => {
   const userId = getUserId(req);
   const { id } = req.params;
