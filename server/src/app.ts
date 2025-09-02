@@ -2,9 +2,10 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
-import collectionsRouter from "./modules/collections/collections.routes";0
+import collectionsRouter from "./modules/collections/collections.routes";
 import authRouter from "./modules/users/auth.routes"; 
 import feedsRouter from "./modules/feeds/feeds.routes";
+import articlesRouter from "./modules/articles/articles.routes";
 
 const app = express();
 app.use(helmet());
@@ -26,6 +27,6 @@ app.use((err: any, _req: any, res: any, _next: any) => {
   console.error(err);
   res.status(500).json({ error: "Internal server error" });
 });
-
+app.use(articlesRouter);
 
 export default app;

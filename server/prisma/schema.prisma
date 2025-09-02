@@ -17,7 +17,8 @@ model User {
   displayName  String?
   createdAt    DateTime @default(now())
 
-  memberships CollectionMember[]
+  memberships   CollectionMember[]
+  articleStates ArticleUser[] // relation avec ArticleUser
 }
 
 /**
@@ -37,15 +38,13 @@ model Collection {
   createdAt   DateTime @default(now()) @map("created_at")
 
   members CollectionMember[]
-  feeds   Feed[] // <— côté opposé de Feed.collection
+  feeds   Feed[]
 }
 
 model CollectionMember {
-  // clés
   collectionId String @map("collection_id")
   userId       String @map("user_id")
 
-  // relations (UNE FOIS chacune !)
   collection Collection @relation(fields: [collectionId], references: [id])
   user       User       @relation(fields: [userId], references: [id])
 
@@ -94,6 +93,28 @@ model Article {
   contentHtml String?   @map("content_html")
   createdAt   DateTime  @default(now()) @map("created_at")
 
+  tags String[] @default([]) @db.Text // tags (Postgres text[])
+
+  states ArticleUser[] // relation avec ArticleUser
+
   @@unique([feedId, guid])
   @@index([feedId])
+}
+
+model ArticleUser {
+  articleId String @map("article_id")
+  userId    String @map("user_id")
+
+  article Article @relation(fields: [articleId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+
+  read     Boolean @default(false)
+  favorite Boolean @default(false)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@id([articleId, userId])
+    @@unique([articleId, userId], name: "articleId_userId") // ✅ ajout
+  @@index([userId])
 }
